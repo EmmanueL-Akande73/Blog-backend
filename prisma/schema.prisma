@@ -1,0 +1,240 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  username     String        @unique
+  password     String
+  role         Role          @default(CASHIER)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  createdById  Int?
+  email        String        @unique
+  branchId     Int?
+  cart         Cart?
+  orders       Order[]
+  reservations Reservation[]
+  branch       Branch?       @relation(fields: [branchId], references: [id])
+  createdBy    User?         @relation("UserCreator", fields: [createdById], references: [id])
+  createdUsers User[]        @relation("UserCreator")
+}
+
+model MenuItem {
+  id          Int         @id @default(autoincrement())
+  name        String
+  description String
+  price       Float
+  category    Category    @default(MAIN)
+  imageUrl    String?
+  isAvailable Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+  inventories Inventory[]
+}
+
+model Order {
+  id            Int               @id @default(autoincrement())
+  userId        Int?
+  status        OrderStatus       @default(PENDING)
+  total         Float
+  discount      Float?            @default(0)
+  discountType  DiscountType?     @default(AMOUNT)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  branchId      Int?
+  paymentMethod PaymentMethod     @default(CASH)
+  paymentStatus PaymentStatus @default(PENDING)
+  receiptNumber String?           @unique
+  receiptGeneratedAt DateTime?
+  walkInName    String?
+  walkInPhone   String?
+  branch        Branch?           @relation(fields: [branchId], references: [id])
+  user          User?             @relation(fields: [userId], references: [id])
+  orderItems    OrderItem[]
+
+  @@index([userId])
+  @@index([branchId])
+}
+
+model OrderItem {
+  id         Int      @id @default(autoincrement())
+  orderId    Int
+  menuItemId Int
+  quantity   Int
+  price      Float
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([menuItemId])
+}
+
+model Reservation {
+  id            Int               @id @default(autoincrement())
+  userId        Int
+  date          DateTime
+  time          DateTime
+  partySize     Int
+  status        ReservationStatus @default(PENDING)
+  notes         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  branchId      Int?
+  paymentMethod PaymentMethod?
+  paymentStatus PaymentStatus? @default(PENDING)
+  depositAmount Float?
+  branch        Branch?           @relation(fields: [branchId], references: [id])
+  user          User              @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([branchId])
+}
+
+model Branch {
+  id             Int           @id @default(autoincrement())
+  name           String
+  address        String
+  city           String
+  district       String
+  phone          String
+  email          String
+  description    String?
+  features       String[]
+  mondayHours    String?
+  tuesdayHours   String?
+  wednesdayHours String?
+  thursdayHours  String?
+  fridayHours    String?
+  saturdayHours  String?
+  sundayHours    String?
+  isActive       Boolean       @default(true)
+  imageUrl       String?
+  latitude       Float?
+  longitude      Float?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  orders         Order[]
+  reservations   Reservation[]
+  users          User[]
+  inventories    Inventory[]
+  @@map("branches")
+}
+
+model Cart {
+  id        Int        @id @default(autoincrement())
+  userId    Int        @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cartItems CartItem[]
+
+  @@index([userId])
+}
+
+model CartItem {
+  id         Int      @id @default(autoincrement())
+  cartId     Int
+  menuItemId Int
+  quantity   Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  cart       Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@unique([cartId, menuItemId])
+  @@index([cartId])
+  @@index([menuItemId])
+}
+
+model SystemSetting {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  value       String
+  description String?
+  category    String   @default("GENERAL")
+  isEditable  Boolean  @default(true)
+  dataType    String   @default("STRING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model Inventory {
+  id         Int      @id @default(autoincrement())
+  menuItemId Int
+  branchId   Int
+  quantity   Int     @default(0)
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  branch     Branch   @relation(fields: [branchId], references: [id])
+
+  @@unique([menuItemId, branchId])
+}
+
+enum Role {
+  ADMIN
+  HEADQUARTER_MANAGER
+  BRANCH_MANAGER
+  CASHIER
+  CHEF
+  CUSTOMER
+}
+
+enum Category {
+  APPETIZER
+  MAIN
+  DESSERT
+  BEVERAGE
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  CASH
+  DIGITAL_WALLET
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus_new {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum DiscountType {
+  AMOUNT
+  PERCENTAGE
+}
