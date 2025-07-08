@@ -23,7 +23,9 @@ const app = express();
 const port = 3001;
 
 // Middleware
-app.use(cors()); // Add CORS support
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'https://myapp-frontend.onrender.com'
+})); // Add CORS support
 app.use(express.json());
 
 // Homepage route
